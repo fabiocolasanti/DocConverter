@@ -16,7 +16,7 @@ namespace DocConverter
     {
         static XmlDocument xmlDoc = new XmlDocument();
         static List<FileInfo> docList = new List<FileInfo>(); 
-        static string endpoint = "http://isis.delphi03.euromoneydigital.com/documents/";
+        static string endpoint = "http://isis.delphi04.euromoneydigital.com/documents/";
         static void Main(string[] args)
         {
 
@@ -25,8 +25,8 @@ namespace DocConverter
             //{                
                 try
                 {
-                    string in_dir= @"C:\DocConverter\BCA";
-                    string out_dir = @"C:\DocConverter\ISIS";
+                    string in_dir = @"C:\DocConverter\BCA\20130531\Archive";
+                    string out_dir = @"C:\DocConverter\ISIS\20130531";
 
 
                     //////////////////////////////////////////////////////////
@@ -43,7 +43,7 @@ namespace DocConverter
                     //////////////////////////////////////////////////////////
 
 
-                    //get the files from directory
+                    ////get the files from directory
                     //string in_dir = args[0].ToString();
                     //string out_dir = args[0].ToString();
 
@@ -52,7 +52,7 @@ namespace DocConverter
 
                     //loop through the files
                     foreach (FileInfo f in docList)
-                    {                        
+                    {
                         //get the document id
                         Console.WriteLine("Processing file:" + f.Name);
                         string doc = GetDocID(dir + @"\" + f.Name);
@@ -76,7 +76,7 @@ namespace DocConverter
                                 Console.WriteLine(f.Name + "converted");
 
                                 //apply the fix
-                                FixDoc(out_dir + @"\" + f.Name);
+                                //FixDoc(out_dir + @"\" + f.Name);
                             }
                             else
                             {
@@ -176,6 +176,24 @@ namespace DocConverter
             response.Close();
         }
 
+        public static bool PutDoc()
+        {
+            bool success = false;
+            string requestURL = endpoint;
+            HttpWebResponse response = MakeRequest(requestURL, "PUT");
+            if (response.StatusCode != HttpStatusCode.Created)
+            {
+                success = false;
+                Console.WriteLine("PUT failed: " + response.StatusCode.ToString());
+            }
+            else
+            {
+                success = true;
+            }
+            response.Close();
+            return success;
+        }
+
         public static bool PostDoc()
         {
             bool success = false;
@@ -248,6 +266,11 @@ namespace DocConverter
         public static void Serialize(dynamic entity, string destination)
         {
             System.IO.TextWriter fileStream = new System.IO.StreamWriter(destination);
+
+            //This is to fix a bug in the BCA way of storing Charts IDs
+            string content = entity.content;
+            content = content.Replace("chart|id|", "chart|id|/charts/");
+            entity.content = content;
 
             XmlSerializer s = new XmlSerializer(entity.GetType());
             s.Serialize(fileStream, (object)entity);
@@ -380,7 +403,7 @@ namespace DocConverter
 
             //initialize
             string connectionString = "SERVER=" + server + ";" + "DATABASE=" + database + ";" + "UID=" + uid + ";" + "PASSWORD=" + password + ";";
-            string query = "select b.title, b.prod service, b.published, filename id, a.body content from reports_annot a left join reports b on id = report_id where b.prod = 'GIS';";
+            string query = "select b.title, b.prod service, b.published, filename id, a.body content from reports_annot a left join reports b on id = report_id -- where b.prod = 'GIS';";
 
             //open connection
             MySqlConnection connection = new MySqlConnection(connectionString);
@@ -397,7 +420,7 @@ namespace DocConverter
 
                 r.title = dataReader["title"].ToString();
                 r.service = dataReader["service"].ToString();
-                r.published = ((DateTime)dataReader["published"]).ToString("yyyy-MM-dd");
+                r.published = ((DateTime)dataReader["published"]).ToString("s");
                 r.id = dataReader["id"].ToString().Replace(".PDF","");
                 r.content = dataReader["content"].ToString();
 
